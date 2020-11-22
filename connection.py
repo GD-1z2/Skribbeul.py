@@ -1,4 +1,4 @@
-import socket, threading
+import socket, threading, sys, time
 
 class ThreadReception(threading.Thread):
     """objet thread gérant la réception des messages"""
@@ -17,20 +17,30 @@ class ThreadReception(threading.Thread):
                 receivedMsg = self.connexion.recv(4096)
                 receivedMsg = receivedMsg.decode(encoding="UTF-8")
                 
+                self.app.logs.append(["s", receivedMsg, time.ctime()])
+
                 self.textarea.config(state="normal")
-                self.textarea.insert("end", receivedMsg)
-                # défilement vers le bas
-                self.textarea.yview_scroll(1, "pages")
-                # lecture seule
+                self.textarea.insert("end", receivedMsg) # add message
+                self.textarea.yview_scroll(1, "pages") # scroll
                 self.textarea.config(state="disabled")
                 
-                if "FIN" in receivedMsg:
-                    # fin du qcm
+                if "/HINT" in  receivedMsg:
+                    self.app.setHint(receivedMsg.split(":")[1])
+                elif "/DRAW" in receivedMsg:
+                    self.app.canDraw = True
+                elif "/NODRAW" in receivedMsg:
+                    self.app.canDraw = False
+                elif "/END" in receivedMsg:
                     self.app.logout()
                     break
                     
-            except socket.error:
-                pass
+            except socket.error as err:
+                print("Socket error : " + err.strerror)
+                self.textarea.config(state="normal")
+                self.textarea.insert("end", "Erreur réseau : " + err.strerror) # add message
+                self.textarea.yview_scroll(1, "pages") # scroll
+                self.textarea.config(state="disabled")
+                input()
 
 # # Frame 2 : zone de réception (zone de texte + scrollbar)
 # Frame2 = Frame(Mafenetre,borderwidth=2,relief=GROOVE)

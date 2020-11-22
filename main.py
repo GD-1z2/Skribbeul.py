@@ -1,8 +1,8 @@
-import tkinter
-import tkinter.messagebox
-import tkinter.simpledialog
-
+import tkinter, tkinter.messagebox, tkinter.simpledialog
 import connection, socket, threading
+import json
+import logs
+import time
 
 # connected = False ; address = "" ; port = 50026
 ref_socket = {}
@@ -21,12 +21,14 @@ class App(tkinter.Frame):
         self.lastLine = []
         self.adress = "localhost" ; self.port = 50026 ; self.connected = False
         self.canvasContent = []
+        self.canDraw = True
+        self.logs = []
 
         self.menuBar = tkinter.Menu(window)
 
         self.serverMenu = tkinter.Menu(self.menuBar, tearoff=0)
         self.serverMenu.add_command(label="Connexion...", command=self.connection)
-        self.trafficButton = self.serverMenu.add_command(label="Traffic", state="disabled")
+        self.trafficButton = self.serverMenu.add_command(label="Traffic", state="disabled", command=self.traffic)
         self.logoutButton = self.serverMenu.add_command(label="Deconnexion", state="disabled", command=self.logout)
         self.menuBar.add_cascade(menu=self.serverMenu, label="Serveur")
 
@@ -48,7 +50,6 @@ class App(tkinter.Frame):
         self.chatLabel.grid(row=2, column=2, rowspan=2)
 
         self.wordLabelVar = tkinter.StringVar()
-        self.wordLabelVar.set("P _ _ d _ i _ _ n")
         self.wordLabel = tkinter.Label(self, textvariable=self.wordLabelVar)
         self.wordLabel.grid(row=1, column=1)
 
@@ -121,14 +122,12 @@ class App(tkinter.Frame):
                 # Dialogue avec le serveur : on lance un thread pour gérer la réception des messages
                 self.threadRec = connection.ThreadReception(self.isocket, ref_socket, self.chatLabel, self)
                 self.threadRec.start()
-                self.connected = True
-                self.sendButton.configure(state="normal")
                 
             except socket.error:
                 tkinter.messagebox.showerror("Erreur", "La connexion au serveur a échoué.")
+                return
 
         self.connected = True
-        
         self.serverMenu.entryconfig("Connexion...", state="disabled")
         self.serverMenu.entryconfig("Traffic", state="active")
         self.serverMenu.entryconfig("Deconnexion", state="active")
@@ -143,7 +142,7 @@ class App(tkinter.Frame):
                 self.canvas.delete(item)
         print(len(self.lastLine))
         self.lastLine.pop()
-        self.canvasContent.pop(len(self.canvasContent)-1)
+        self.canvasContent.pop()
 
     def clear(self):
         self.canvas.delete("all")
@@ -155,6 +154,7 @@ class App(tkinter.Frame):
         self.serverMenu.entryconfig("Traffic", state="disabled")
         self.serverMenu.entryconfig("Deconnexion", state="disabled")
         self.infoLabelVar.set("Déconnecté")
+        self.wordLabelVar.set("")
         self.sendButton.config(state="disabled")
         self.connected = False
         self.chatLabel.delete("1.0", "end")
@@ -193,24 +193,29 @@ class App(tkinter.Frame):
                 self.chatLabel.insert("end", message+"\n")
                 self.chatLabel.config(state="disabled")
             
-                ref_socket[0].send(bytes(message,"UTF8"))
+                ref_socket[0].send(bytes(message, "UTF8"))
+                self.logs.append(["c", message, time.ctime()])
                 
             except socket.error:
                 pass
 
     def onClick(self, event):
+        if not self.canDraw : return
         self.preX = event.x;self.preY = event.y
         self.lastLine.append(0)
         self.canvasContent.append([self.color, self.size, []])
 
     def onDrag(self, event):
+        if not self.canDraw : return
         # self.canvas.create_oval(event.x-self.size/2, event.y-self.size/2, event.x+self.size/2, event.y+self.size/2, fill=self.color, outline=self.color)        
         self.canvas.create_line(self.preX, self.preY, event.x, event.y, fill=self.color, width=self.size)
         self.preX = event.x
         self.preY = event.y
         self.lastLine[len(self.lastLine)-1]+=1
         self.canvasContent[len(self.canvasContent)-1][2].append([event.x, event.y])
-        ref_socket[0].send(bytes(self.canvasContent, "UTF8"))
+        print(json.dumps(self.canvasContent))
+        print()
+        # ref_socket[0].send(bytes(json.dumps(self.canvasContent), "UTF8"))
 
     def getColorButton(self, colorG : str = "black"):
         if colorG=="black":return self.blackButton
@@ -225,6 +230,7 @@ class App(tkinter.Frame):
         return self.blackButton
 
     def setColor(self, colorI = "black"):
+        if not self.canDraw : return
         self.getColorButton(self.color).config(text="▪")
         self.color=colorI
         self.getColorButton(self.color).config(text="✓")
@@ -239,11 +245,22 @@ class App(tkinter.Frame):
     def cBlue(self):self.setColor("blue")
     def cViolet(self):self.setColor("violet")
 
-    def setSize(self, sizeI): self.size = sizeI
+    def setSize(self, sizeI):
+        if not self.canDraw : return
+        self.size = sizeI
     def size1(self):self.setSize(3)
     def size2(self):self.setSize(5)
     def size3(self):self.setSize(8)
     def size4(self):self.setSize(12)
+
+    def setHint(self, hint : str):
+        hint2 = ""
+        for char in hint :
+            hint2 += char+" "
+        self.wordLabelVar.set(hint2[:-1])
+
+    def traffic(self):
+        logs.logsWindow(self.logs)
 
 # chatLabel = tkinter.Label(window, width=30, height=30, bg="white", text="Bienvenue !", justify=tkinter.LEFT)
 # chatLabel.grid(row=2, column=2, rowspan=2)
