@@ -23,6 +23,7 @@ class App(tkinter.Frame):
         self.canvasContent = []
         self.canDraw = True
         self.logs = []
+        self.dragTime = 0
 
         self.menuBar = tkinter.Menu(window)
 
@@ -60,8 +61,9 @@ class App(tkinter.Frame):
 
         self.canvas = tkinter.Canvas(self, width=900, height=450, bg="white")
         self.canvas.grid(row=2, column=1, rowspan=2)
-        self.canvas.bind('<Button-1>', self.onClick)
-        self.canvas.bind('<B1-Motion>', self.onDrag)
+        self.canvas.bind("<Button-1>", self.onClick)
+        self.canvas.bind("<B1-Motion>", self.onDrag)
+        self.canvas.bind("<ButtonRelease-1>", self.onRelease)
 
         # self.messageFrame = tkinter.Frame(self)
         self.messageEntryVar = tkinter.StringVar()
@@ -70,6 +72,7 @@ class App(tkinter.Frame):
         self.sendButton = tkinter.Button(self, text="↑", font=("Helvetica", 10), command=self.sendMessage, state="disabled")
         self.sendButton.grid(row=4, column=2, sticky="e")
         # self.messageEntry.grid(row=4, column=2, fill="both")
+        self.messageEntry.bind("<Return>", self.sendMessageEv)
 
         self.blackButton = tkinter.Button(self, text="✓", bg="black", font=("Helvetica", 12), fg="white", command=self.cBlack)
         self.blackButton.grid(row=4, column=1, sticky="w")
@@ -122,6 +125,7 @@ class App(tkinter.Frame):
                 # Dialogue avec le serveur : on lance un thread pour gérer la réception des messages
                 self.threadRec = connection.ThreadReception(self.isocket, ref_socket, self.chatLabel, self)
                 self.threadRec.start()
+                self.messageEntry.focus_set()
                 
             except socket.error:
                 tkinter.messagebox.showerror("Erreur", "La connexion au serveur a échoué.")
@@ -133,6 +137,65 @@ class App(tkinter.Frame):
         self.serverMenu.entryconfig("Deconnexion", state="active")
         self.infoLabelVar.set("Connecté")
         self.sendButton.config(state="normal")
+
+    def logout(self):
+        self.serverMenu.entryconfig("Connexion...", state="active")
+        self.serverMenu.entryconfig("Traffic", state="disabled")
+        self.serverMenu.entryconfig("Deconnexion", state="disabled")
+        self.infoLabelVar.set("Déconnecté")
+        self.wordLabelVar.set("")
+        self.sendButton.config(state="disabled")
+        self.connected = False
+        self.chatLabel.delete("1.0", "end")
+        ref_socket.clear()
+        tkinter.messagebox.showinfo(title="Deconnexion", message="Vous avez été déconnecté")
+
+    def sendMessage(self):
+        global ref_socket
+
+        if self.connected == True:
+            try :
+                message = self.messageEntryVar.get()
+                if message == "": return
+                print(message)
+                self.messageEntryVar.set("")
+                
+                self.chatLabel.config(state="normal")
+                self.chatLabel.insert("end", message+"\n")
+                self.chatLabel.config(state="disabled")
+            
+                ref_socket[0].send(bytes(message, "UTF8"))
+                self.logs.append(["c", message, time.ctime()])
+                
+            except socket.error:
+                pass
+    
+    def sendMessageEv(self, e): self.sendMessage()
+
+    def sendCanvas(self):
+        ref_socket[0].send(bytes("/CANVAS:"+json.dumps(self.canvasContent), "UTF8"))
+
+    def onClick(self, event):
+        if not self.canDraw : return
+        self.preX = event.x;self.preY = event.y
+        self.lastLine.append(0)
+        self.canvasContent.append([self.color, self.size, []])
+
+    def onDrag(self, event):
+        if not self.canDraw : return
+        self.dragTime+=1
+        if self.dragTime%25 != 0 : return
+        # self.canvas.create_oval(event.x-self.size/2, event.y-self.size/2, event.x+self.size/2, event.y+self.size/2, fill=self.color, outline=self.color)        
+        self.canvas.create_line(self.preX, self.preY, event.x, event.y, fill=self.color, width=self.size)
+        self.preX = event.x
+        self.preY = event.y
+        self.lastLine[len(self.lastLine)-1]+=1
+        self.canvasContent[len(self.canvasContent)-1][2].append([event.x, event.y])
+        print(json.dumps(self.canvasContent))
+        print()
+    
+    def onRelease(self, event):
+        if self.canDraw : self.sendCanvas()
 
     def undo(self):
         if len(self.lastLine)<1 : self.clear() ; tkinter.messagebox.showerror(title="Erreur", message="Aucun élément trouvé") ; return
@@ -148,74 +211,6 @@ class App(tkinter.Frame):
         self.canvas.delete("all")
         self.lastLine.clear()
         self.canvasContent.clear()
-
-    def logout(self):
-        self.serverMenu.entryconfig("Connexion...", state="active")
-        self.serverMenu.entryconfig("Traffic", state="disabled")
-        self.serverMenu.entryconfig("Deconnexion", state="disabled")
-        self.infoLabelVar.set("Déconnecté")
-        self.wordLabelVar.set("")
-        self.sendButton.config(state="disabled")
-        self.connected = False
-        self.chatLabel.delete("1.0", "end")
-        ref_socket.clear()
-        tkinter.messagebox.showinfo(title="Deconnexion", message="Vous avez été déconnecté")
-
-    def about(self):
-        tkinter.messagebox.showinfo(title="A propos", message="Skribbeul.py\nJeu multijoueur basé sur skribl.io\nRéalisé en python par 1z2")
-
-    def tutoPlay(self):
-        tkinter.messagebox.showinfo(title="Tutoriel : comment jouer",
-        message="")
-
-    def tutoServer(self):
-        tkinter.messagebox.showinfo(title="Tutoriel : comment se connecter à un serveur",
-        message="")
-
-    def addLabel(self, master, x, y, w, h, *args, **kwargs):
-        f = tkinter.Frame(master, height=h, width=w)
-        f.pack_propagate(0) # don't shrink
-        f.grid(row=x, column=y)
-        label = tkinter.Label(f, *args, **kwargs)
-        label.pack(fill=tkinter.BOTH, expand=1)
-        return label
-
-    def sendMessage(self):
-        global ref_socket
-
-        if self.connected == True:
-            try :
-                message = self.messageEntryVar.get()
-                print(message)
-                self.messageEntryVar.set("")
-                
-                self.chatLabel.config(state="normal")
-                self.chatLabel.insert("end", message+"\n")
-                self.chatLabel.config(state="disabled")
-            
-                ref_socket[0].send(bytes(message, "UTF8"))
-                self.logs.append(["c", message, time.ctime()])
-                
-            except socket.error:
-                pass
-
-    def onClick(self, event):
-        if not self.canDraw : return
-        self.preX = event.x;self.preY = event.y
-        self.lastLine.append(0)
-        self.canvasContent.append([self.color, self.size, []])
-
-    def onDrag(self, event):
-        if not self.canDraw : return
-        # self.canvas.create_oval(event.x-self.size/2, event.y-self.size/2, event.x+self.size/2, event.y+self.size/2, fill=self.color, outline=self.color)        
-        self.canvas.create_line(self.preX, self.preY, event.x, event.y, fill=self.color, width=self.size)
-        self.preX = event.x
-        self.preY = event.y
-        self.lastLine[len(self.lastLine)-1]+=1
-        self.canvasContent[len(self.canvasContent)-1][2].append([event.x, event.y])
-        print(json.dumps(self.canvasContent))
-        print()
-        # ref_socket[0].send(bytes(json.dumps(self.canvasContent), "UTF8"))
 
     def getColorButton(self, colorG : str = "black"):
         if colorG=="black":return self.blackButton
@@ -258,9 +253,39 @@ class App(tkinter.Frame):
         for char in hint :
             hint2 += char+" "
         self.wordLabelVar.set(hint2[:-1])
+    
+    def render(self, content):
+        paths = json.loads(content)
+        self.canvas.delete("all")
+        for path in paths:
+            i=0
+            for line in path[2][:-1]:
+                self.canvas.create_line(line[0], line[1], path[2][i+1][0], path[2][i+1][1], fill=path[0], width=path[1])
+                i+=1
 
     def traffic(self):
         logs.logsWindow(self.logs)
+
+    def about(self):
+        tkinter.messagebox.showinfo(title="A propos", message="Skribbeul.py\nJeu multijoueur basé sur skribl.io\nRéalisé en python par 1z2")
+
+    def tutoPlay(self):
+        tkinter.messagebox.showinfo(title="Tutoriel : comment jouer",
+        message="")
+
+    def tutoServer(self):
+        tkinter.messagebox.showinfo(title="Tutoriel : comment se connecter à un serveur",
+        message="")
+
+    def addLabel(self, master, x, y, w, h, *args, **kwargs):
+        f = tkinter.Frame(master, height=h, width=w)
+        f.pack_propagate(0) # don't shrink
+        f.grid(row=x, column=y)
+        label = tkinter.Label(f, *args, **kwargs)
+        label.pack(fill=tkinter.BOTH, expand=1)
+        return label
+
+
 
 # chatLabel = tkinter.Label(window, width=30, height=30, bg="white", text="Bienvenue !", justify=tkinter.LEFT)
 # chatLabel.grid(row=2, column=2, rowspan=2)

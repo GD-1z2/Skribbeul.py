@@ -14,7 +14,7 @@ class ThreadReception(threading.Thread):
         while True:
             try:
                 # en attente de réception
-                receivedMsg = self.connexion.recv(4096)
+                receivedMsg = self.connexion.recv(65536)
                 receivedMsg = receivedMsg.decode(encoding="UTF-8")
                 
                 self.app.logs.append(["s", receivedMsg, time.ctime()])
@@ -24,7 +24,9 @@ class ThreadReception(threading.Thread):
                 self.textarea.yview_scroll(1, "pages") # scroll
                 self.textarea.config(state="disabled")
                 
-                if "/HINT" in  receivedMsg:
+                if "/CANVAS" in receivedMsg:
+                    self.app.render(receivedMsg.split(":")[1])
+                elif "/HINT" in  receivedMsg:
                     self.app.setHint(receivedMsg.split(":")[1])
                 elif "/DRAW" in receivedMsg:
                     self.app.canDraw = True

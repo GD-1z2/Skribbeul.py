@@ -17,6 +17,8 @@ Commands :
     client cant draw
 /END
     end the game, automatically disconnects the client
+/CANVAS:json
+    transfers canvas content (from drawer to server, and from server to other clients)
 
 todo : clear, undo, skip, clearchat
 """
@@ -26,9 +28,7 @@ import socket, sys, threading, time, random
 HOST = "" ; PORT = 50026 # host+port for serv
 
 minPlayers = 2
-playersList = []
 maxDuration = 30
-
 wordList = [
     ["plante", 1],
     ["arbre", 1],
@@ -44,6 +44,8 @@ wordList = [
     ["guerre", 3]
 ]
 
+playersList = []
+
 class Player():
     """
     Player
@@ -55,6 +57,7 @@ class Player():
         self.connection = connection
         self.messages = []
         self.readMsg = False
+        self.sendDraw = False
 
     def hasName(self):
         return False if self.name=="" else True
@@ -97,7 +100,7 @@ class ThreadClient(threading.Thread):
         while True:
             if self.player.readMsg :
                 try :
-                    answer = self.connection.recv(4096)
+                    answer = self.connection.recv(65536)
                     answer = answer.decode(encoding="UTF-8")
                 except :
                     break
@@ -109,6 +112,10 @@ class ThreadClient(threading.Thread):
                     # dict_reponses[self.name] = answer, time.time()
                 self.player.messages.append(answer)
                 print("Client", self.name, "> Server : ", answer)
+
+                if answer[:8] == "/CANVAS:":
+                    for player in playersList:
+                        if player != self.player : player.connection.send(bytes(answer, "UTF-8"))
 
         print("\nFin du thread", self.name)
         self.connection.close()
@@ -151,6 +158,7 @@ while not namesChosen:
 sendAll("\nLa partie va commencer !\n")
 
 def checkAnswers(word : str, curPlayer : Player):
+    if len(playersList) < 2 : return False
     for player in playersList:
         if word not in player.messages and player != curPlayer : return False
     return True
@@ -179,6 +187,7 @@ for player in playersList :
 
     sendAll("/HINT:"+hint)
     player.connection.send(b"/DRAW\n")
+    player.readMsg = True
 
     #reading players answers
     for player2 in playersList:
