@@ -142,7 +142,7 @@ while len(playersList) < minPlayers:
     except:
         sys.exit()
     
-    if connection.getpeername()[0] != "92.103.144.202" : continue
+    if connection.getpeername()[0] != "92.103.144.202" : print("Failed connection : " + connection.getpeername()[0]) ; continue
     
     th = ThreadClient(connection) # new thread to handle the client
     th.setDaemon(1)
