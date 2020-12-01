@@ -24,21 +24,42 @@ class App(tkinter.Frame):
         self.canDraw = True
         self.logs = []
         self.dragTime = 0
+        self.debug = True
 
         self.menuBar = tkinter.Menu(window)
 
         self.serverMenu = tkinter.Menu(self.menuBar, tearoff=0)
-        self.serverMenu.add_command(label="Connexion...", command=self.connection)
-        self.trafficButton = self.serverMenu.add_command(label="Traffic", state="disabled", command=self.traffic)
-        self.logoutButton = self.serverMenu.add_command(label="Deconnexion", state="disabled", command=self.logout)
+        self.serverMenu.add_command(label="Connexion...", command=self.connection, accelerator="Ctrl+Q")
+        self.trafficButton = self.serverMenu.add_command(label="Traffic", state="disabled", command=self.traffic, accelerator="Ctrl+T")
+        self.logoutButton = self.serverMenu.add_command(label="Deconnexion", state="disabled", command=self.logout, accelerator="Ctrl+D")
         self.menuBar.add_cascade(menu=self.serverMenu, label="Serveur")
+
+        self.drawMenu = tkinter.Menu(self.menuBar, tearoff=0)
+        self.undoMenuButton = self.drawMenu.add_command(label="Annuler", command=self.undo, accelerator="Ctrl+Z")
+        self.clearMenuButton = self.drawMenu.add_command(label="Effacer", command=self.clear, accelerator="Ctrl+E")
+        self.drawMenu.add_separator()
+        self.blackMenuButton = self.drawMenu.add_radiobutton(label="Noir", command=self.cBlack)
+        self.greyMenuButton = self.drawMenu.add_radiobutton(label="Gris", command=self.cGrey)
+        self.whiteMenuButton = self.drawMenu.add_radiobutton(label="Blanc", command=self.cWhite)
+        self.redMenuButton = self.drawMenu.add_radiobutton(label="Rouge", command=self.cRed)
+        self.orangeMenuButton = self.drawMenu.add_radiobutton(label="Orange", command=self.cOrange)
+        self.yellowMenuButton = self.drawMenu.add_radiobutton(label="Jaune", command=self.cYellow)
+        self.greenMenuButton = self.drawMenu.add_radiobutton(label="Vert", command=self.cGreen)
+        self.blueMenuButton = self.drawMenu.add_radiobutton(label="Bleu", command=self.cBlue)
+        self.violetMenuButton = self.drawMenu.add_radiobutton(label="Violet", command=self.cViolet)
+        self.drawMenu.add_separator()
+        self.size1MenuButton = self.drawMenu.add_radiobutton(label="◦   Petit", command=self.size1, accelerator="Ctrl+1")
+        self.size1MenuButton = self.drawMenu.add_radiobutton(label="○ Moyen", command=self.size1, accelerator="Ctrl+2")
+        self.size1MenuButton = self.drawMenu.add_radiobutton(label="〇 Grand", command=self.size1, accelerator="Ctrl+3")
+        self.size1MenuButton = self.drawMenu.add_radiobutton(label="◯ Très grand", command=self.size1, accelerator="Ctrl+4")
+        self.menuBar.add_cascade(menu=self.drawMenu, label="Dessin")
 
         self.helpMenu = tkinter.Menu(self.menuBar, tearoff=0)
         self.helpMenu.add_command(label="    Tutoriels", state="disabled")
         self.helpMenu.add_command(label="Comment jouer", command=self.tutoPlay)
         self.helpMenu.add_command(label="Comment se connecter à un serveur", command=self.tutoServer)
         self.helpMenu.add_separator()
-        self.helpMenu.add_command(label="A propos", command=self.about)
+        self.helpMenu.add_command(label="A propos", command=self.about, accelerator="Ctrl+A")
         self.menuBar.add_cascade(menu=self.helpMenu, label="Aide")
 
         window.config(menu=self.menuBar)
@@ -64,6 +85,17 @@ class App(tkinter.Frame):
         self.canvas.bind("<Button-1>", self.onClick)
         self.canvas.bind("<B1-Motion>", self.onDrag)
         self.canvas.bind("<ButtonRelease-1>", self.onRelease)
+
+        window.bind("<Control-d>", self.logoutEv)
+        window.bind("<Control-q>", self.connectionEv)
+        window.bind("<Control-z>", self.undoEv)
+        window.bind("<Control-e>", self.clearEv)
+        window.bind("<Control-t>", self.trafficEv)
+        window.bind("<Control-a>", self.aboutEv)
+        window.bind("<Control-&>", self.size1Ev)
+        window.bind("<Control-(>", self.size2Ev)
+        window.bind("<Control-\">", self.size3Ev)
+        window.bind("<Control-'>", self.size4Ev)
 
         # self.messageFrame = tkinter.Frame(self)
         self.messageEntryVar = tkinter.StringVar()
@@ -184,7 +216,7 @@ class App(tkinter.Frame):
     def onDrag(self, event):
         if not self.canDraw : return
         self.dragTime+=1
-        if self.dragTime%25 != 0 : return
+        if self.dragTime%5 != 0 : return
         # self.canvas.create_oval(event.x-self.size/2, event.y-self.size/2, event.x+self.size/2, event.y+self.size/2, fill=self.color, outline=self.color)        
         self.canvas.create_line(self.preX, self.preY, event.x, event.y, fill=self.color, width=self.size)
         self.preX = event.x
@@ -285,6 +317,23 @@ class App(tkinter.Frame):
         label.pack(fill=tkinter.BOTH, expand=1)
         return label
 
+    
+    def clearChat(self):
+        print("Clear chat")
+        self.chatLabel.config(state="normal")
+        self.chatLabel.delete(1.0, tkinter.END)
+        self.chatLabel.config(state="disabled")
+
+    def connectionEv(self, e): self.connection()
+    def logoutEv(self, e): self.logout()
+    def undoEv(self, e): self.undo()
+    def clearEv(self, e): self.clear()
+    def trafficEv(self, e): self.traffic()
+    def aboutEv(self, e): self.about()
+    def size1Ev(self, e): self.size1()
+    def size2Ev(self, e): self.size2()
+    def size3Ev(self, e): self.size3()
+    def size4Ev(self, e): self.size4()
 
 
 # chatLabel = tkinter.Label(window, width=30, height=30, bg="white", text="Bienvenue !", justify=tkinter.LEFT)

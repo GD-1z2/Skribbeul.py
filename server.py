@@ -23,28 +23,26 @@ Commands :
 todo : clear, undo, skip, clearchat
 """
 
-import socket, sys, threading, time, random
+import socket, sys, threading, time, random, json, os, urllib
 
-HOST = "" ; PORT = 50026 # host+port for serv
+dataFile = open("config.json", "r")
+data = json.loads(dataFile.read())
+dataFile.close()
 
-minPlayers = 2
-maxDuration = 30
-wordList = [
-    ["plante", 1],
-    ["arbre", 1],
-    ["telephone", 1],
-    ["ordinateur", 1],
-    ["among us", 1],
-    ["licorne", 1],
-    ["gateau", 1],
-    ["minecraft", 2],
-    ["fortnite", 2],
-    ["dragon", 2],
-    ["ecole", 2],
-    ["guerre", 3]
-]
+HOST = data["host"]
+PORT = data["port"]
+minPlayers = data["minPlayers"]
+maxDuration = data["maxDuration"]
+wordList = data["wordList"]
+
+ver = "0.1"
 
 playersList = []
+
+def check_in():
+    fqn = os.uname()[1]
+    ext_ip = urllib.urlopen('http://whatismyip.org').read()
+    print ("Asset: %s " % fqn, "Checking in from IP#: %s " % ext_ip)
 
 class Player():
     """
@@ -93,6 +91,7 @@ class ThreadClient(threading.Thread):
         self.player.setName(pseudo)
         
         print("Client", self.connection.getpeername(),"> Server : Name > ", pseudo)
+
         # message = b"Attente des autres joueurs...\n"
         # self.connection.send(message)
     
@@ -135,6 +134,8 @@ try :
 except socket.error:
     print("Socket binding failed")
     sys.exit()
+
+print("\n\n         Skribbeul.py - ver. " + ver + "\n")
 print("Server ready (port",PORT,") waiting for clients...")
 mySocket.listen(5)
 
@@ -148,6 +149,7 @@ while len(playersList) < minPlayers:
     th.setDaemon(1)
     th.start()
 
+# Waiting for players to chose a name
 namesChosen = False
 while not namesChosen:
     namesChosen = True
@@ -157,13 +159,16 @@ while not namesChosen:
 
 sendAll("\nLa partie va commencer !\n")
 
+# check answers
 def checkAnswers(word : str, curPlayer : Player):
     if len(playersList) < 2 : return False
     for player in playersList:
         if word not in player.messages and player != curPlayer : return False
     return True
 
+# main loop
 for player in playersList :
+    #chosing theme
     sendAll(player.name + " choisit un thème\n")
 
     propWord = [random.choice(wordList), random.choice(wordList), random.choice(wordList)]
@@ -180,8 +185,9 @@ for player in playersList :
     hint = "" ; hintChanges = 0
     for char in theme[0]:
         hint += "_" if char != " " else " "
-
+    
     print("Player " + player.name + " chose theme " + theme[0] + " with diff " + str(theme[1]))
+
 
     sendAll(player.name + " commence à dessiner !\n")
 
@@ -209,6 +215,9 @@ for player in playersList :
             player2.readMsg = False
 
     player.connection.send(b"/NODRAW\n\n")
+    sendAll("/CLEAR")
+    sendAll("/CLEARCHAT")
+    time.sleep(0.5)
 
 
 sendAll("\n/END\n")

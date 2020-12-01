@@ -32,6 +32,10 @@ class ThreadReception(threading.Thread):
                     self.app.canDraw = True
                 elif "/NODRAW" in receivedMsg:
                     self.app.canDraw = False
+                elif "/CLEARCHAT" in receivedMsg:
+                    self.app.clearChat()
+                elif "/CLEAR" in receivedMsg:
+                    self.app.clear()
                 elif "/END" in receivedMsg:
                     self.app.logout()
                     break
