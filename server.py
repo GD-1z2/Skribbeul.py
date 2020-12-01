@@ -30,7 +30,7 @@ data = json.loads(dataFile.read())
 dataFile.close()
 
 HOST = data["host"]
-PORT = data["port"]
+PORT = os.environ.get('PORT')
 minPlayers = data["minPlayers"]
 maxDuration = data["maxDuration"]
 wordList = data["wordList"]
