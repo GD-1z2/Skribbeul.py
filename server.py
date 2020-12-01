@@ -39,10 +39,7 @@ ver = "0.1"
 
 playersList = []
 
-def check_in():
-    fqn = os.uname()[1]
-    ext_ip = urllib.urlopen('http://whatismyip.org').read()
-    print ("Asset: %s " % fqn, "Checking in from IP#: %s " % ext_ip)
+connTotal = 0
 
 class Player():
     """
@@ -145,6 +142,10 @@ while len(playersList) < minPlayers:
         connection, adress = mySocket.accept()
     except:
         sys.exit()
+    
+    connTotal+=1
+    if connTotal==1 : continue
+    
     th = ThreadClient(connection) # new thread to handle the client
     th.setDaemon(1)
     th.start()
