@@ -72,7 +72,6 @@ class ThreadClient(threading.Thread):
         self.player = Player(conn)
         playersList.append(self.player)
         self.connection = conn
-                
         self.name = self.getName() # thread id "<Thread-N>"
         
         print("Connexion du client", self.connection.getpeername(), self.name, self.connection)
@@ -143,8 +142,7 @@ while len(playersList) < minPlayers:
     except:
         sys.exit()
     
-    connTotal+=1
-    if connTotal==1 : continue
+    if connection.getpeername()[0] != "92.103.144.202" : continue
     
     th = ThreadClient(connection) # new thread to handle the client
     th.setDaemon(1)
